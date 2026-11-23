@@ -28,7 +28,7 @@ except Exception as e:
 **Solo se reemplaza el BLOQUE DE DATOS. Todo lo demás de `demo-base.html` se copia EXACTO: sin resumir, sin simplificar, sin reescribir, sin «mejorar», sin ordenar, sin quitar nada.**
 
 - El bloque de datos es lo que está entre `<!-- BLOQUE-DE-DATOS-INICIO` y `<!-- BLOQUE-DE-DATOS-FIN -->` (ambas marcas incluidas). Es lo único que cambia.
-- El resto del archivo es la carta real comprimida (estilos, código, ediciones, selector, «Copiar pedido»…). Parece ilegible a propósito. **No lo leas para entenderlo, no lo reescribas, no lo vuelvas a escribir, no lo «limpies».** Un solo carácter distinto lo puede dañar.
+- El resto del archivo es la carta real comprimida (estilos, código, la carta, el panel del dueño, la vista del mesero, ediciones, controles de la demo…). Parece ilegible a propósito. **No lo leas para entenderlo, no lo reescribas, no lo vuelvas a escribir, no lo «limpies».** Un solo carácter distinto lo puede dañar.
 - **Nunca escribas el archivo completo con tu propia respuesta.** Mide más de 200 KB: lo vas a recortar o a dañar. Se arma **con código** (Python), copiando el archivo original y cambiando solo ese bloque (ver «El código»).
 - Si no tienes la herramienta para ejecutar código y crear archivos, **detente** y dile a Julián: *«Necesito que active "Creación y análisis de archivos" en Configuración › Funciones de Claude para armar la demo sin dañarla»*. No intentes armarla de otra forma.
 
@@ -63,7 +63,7 @@ Cada plato es un objeto con:
 - Opcionales: `"etiquetas"` (lista con `res`, `pollo`, `cerdo`, `mar`, `veg`, `vegano`, `singluten`, `queso`, `comp`; solo si el nombre o la descripción lo dicen claro), `"picante"` (0 a 3, solo si la carta lo indica), `"destacado": true` (4 a 6 platos que se vean como los estrella o los primeros de cada categoría), `"agotado": true`.
 - **Precios:** números sin puntos ni signo (`$12.000` → `12000`). Si la carta pone los precios abreviados (`12`, `12.5`, `12k`) casi seguro son miles: conviértelos **solo si toda la carta es así** y avísale a Julián en «REVISAR».
 - **Cuántos:** de **8 a 12 platos** (los más representativos, de las categorías principales), salvo que Julián pida toda la carta. Mantén el orden y los nombres de categoría de la carta (`Entradas`, `Platos fuertes`, `Hamburguesas`, `Postres`, `Bebidas`…). Para que los filtros funcionen, no uses una categoría llamada «Pizzas»; si es una pizzería, ponles otro nombre (por ejemplo «Pizzas artesanales») con `opciones` por tamaño.
-- **Fotos de platos:** solo si Julián mandó fotos de los platos y cumples la sección «Fotos de los platos» (máximo 8, con `"foto"` dentro del plato). Los platos sin foto no llevan el campo `"foto"`: sale el recuadro «Foto del plato» (las fotos reales las pone el cliente después).
+- **Fotos de platos:** solo si Julián mandó fotos de los platos y cumples la sección «Fotos de los platos» (máximo 8, con `"foto"` dentro del plato). Los platos sin foto no llevan el campo `"foto"`: la demo les pone sola una ilustración genérica del tipo de comida (las fotos reales las pone el cliente después).
 - Escribe los nombres como los escribe la carta. Solo corrige tildes y mayúsculas evidentes.
 
 ### Dudas: NUNCA inventar, marcar para revisión
@@ -295,9 +295,17 @@ Cuando Julián escriba **«dame los datos»** (o parecido: «pásame los datos»
 
 ## Qué hace la demo (para que no la «arregles»)
 
-Es la carta real, y debe seguir así: bienvenida con «Toque para entrar», portada, «¿No sabe qué pedir?», filtros, «Lo más pedido», buscador, «Explore el menú», fichas con «Va bien con…», carrito, y **todas las ediciones** (Normal, Navidad, Halloween, San Pedro, Día de la Madre, Amor y Amistad, Noche en la terraza, Almuerzos) con su selector (la lengüeta del borde derecho).
+Es la **carta real COMPLETA** (el mismo código de la plantilla, tal cual), en un solo archivo. Tiene todas las pantallas, y debe seguir así:
 
-**Al confirmar el pedido** (el cliente completa nombre, entrega y pago, y toca «Enviar pedido por WhatsApp») pasan **dos cosas**: 1) se intenta abrir WhatsApp con el pedido ya escrito, al número del bloque de datos, y 2) en pantalla aparece el pedido completo (platos, cantidades, precios y total) con un botón grande **«Copiar pedido»**, por si WhatsApp no abre. No hay botón de mesero ni nada conectado a servidores. Si algo de esto no funciona, **no lo repares tú**: avísale a Julián.
+- **La carta del cliente:** bienvenida con «Toque para entrar», portada, «¿No sabe qué pedir?», filtros, «Lo más pedido», buscador, «Explore el menú», fichas con «Va bien con…», carrito, pedido desde la mesa (el cliente llega con el QR de la «Mesa 5») o por domicilio / para llevar, y animaciones.
+- **Los vestidos (ediciones de temporada):** Normal, Navidad, Halloween, San Pedro, Día de la Madre, Amor y Amistad, Noche en la terraza y Almuerzos, cada uno con su intensidad (suave, media, fuerte).
+- **El panel del dueño** completo (platos, ediciones, apariencia, mesas, categorías, personal, ajustes, recorrido «Cómo se usa»), que se abre **sin clave** con el botoncito «⚙ Panel» de arriba a la izquierda.
+- **La vista del mesero** (mesas, pedidos que llegan de la carta, confirmar, enviar cuenta, liberar mesa), que se abre desde la lengüeta ⚙ del borde derecho (junto con el vestido, la intensidad y un mesero simulado).
+- Los datos se guardan solo en el navegador de quien abre el archivo (no hay Supabase ni servidor). Lo que el dueño cambia en el panel se ve en la carta, y los pedidos de la carta le llegan al mesero.
+- **Platos sin foto:** la demo les pone sola una ilustración bonita del tipo de comida (carne, pollo, pizza, hamburguesa, postre, bebida…). **Tú no haces nada**: no escribas fotos genéricas en el bloque; el campo `"foto"` es solo para fotos reales del plato.
+- **Lo que solo funciona en la carta real** (avisa «Esto funciona en la carta real» o no hace nada, pero nunca deja la pantalla en blanco): Supabase (cuentas reales, guardar en la nube), WhatsApp real y el visor 3D de los platos (la librería 3D pesa 1 MB y no va en la demo).
+
+**Al confirmar el pedido por domicilio** (el cliente completa nombre, entrega y pago, y toca «Enviar pedido por WhatsApp») pasan **dos cosas**: 1) se intenta abrir WhatsApp con el pedido ya escrito, al número del bloque de datos, y 2) en pantalla aparece el pedido completo (platos, cantidades, precios y total) con un botón grande **«Copiar pedido»**, por si WhatsApp no abre. Si algo de esto no funciona, **no lo repares tú**: avísale a Julián.
 
 ## La respuesta a Julián (corta, en español sencillo)
 
