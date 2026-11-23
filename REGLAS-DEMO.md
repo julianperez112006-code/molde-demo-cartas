@@ -75,7 +75,7 @@ Cada plato es un objeto con:
 
 ### Colores
 
-- Si Julián mandó el **logo**, míralo y toma de ahí el color de marca (`principal`) y el segundo color (`acento`). Sin logo, escoge colores que vayan con el estilo de la carta (rústico, elegante, marino, moderno…).
+- Si hay **logo**, saca de ahí el color de marca (`principal`) y el segundo color (`acento`) **con código**: `colores_del_logo(rgba)` (está en la sección «Logo»; usa el logo ya recortado, sin fondo) te da los 5 colores. Míralos con tus ojos: `principal` debe ser el color que de verdad domina la marca. Si el logo no tiene color (blanco, negro, gris) o el resultado no te convence, escoge colores a mano que vayan con el logo. Sin logo, escoge colores que vayan con el estilo de la carta (rústico, elegante, marino, moderno…).
 - Los 5 colores y su papel:
   - `fondo`: muy claro, con un toque del color de marca (por ejemplo `#f1e4cb`).
   - `tarjeta`: casi blanco (`#fffdf8`).
@@ -86,8 +86,97 @@ Cada plato es un objeto con:
 
 ### Logo
 
-- Si Julián mandó el logo **y puedes acceder al archivo** (carpeta de archivos subidos): redúcelo a máximo 300 px de ancho, guárdalo como WebP (calidad ~80, debe quedar bajo 30 KB) y ponlo en `logo` como `data:image/webp;base64,…`. Conserva el fondo transparente si lo tiene.
-- Si **no** puedes acceder al archivo (solo lo ves en la conversación): deja `"logo": ""` y dile a Julián que el monograma es provisional. **No intentes copiar la imagen «a mano».**
+Julián a veces manda, entre las fotos, una imagen del logo del restaurante (la foto de perfil de Instagram, la carta o el letrero). Cuando la haya, haz todo esto **tú solo**, sin preguntarle:
+
+1. **Reconoce cuál es el logo.** Es la imagen (o la parte de una foto) donde está la **marca** del restaurante: su nombre en letras de diseño y/o un ícono, de pocos colores, casi siempre plano y a menudo cuadrado. **No** es una foto de comida, del local, de gente ni de la calle. Si ninguna foto lo es, o dudas entre dos, **no pongas logo** y apunta en REVISAR: *«logo: no sé cuál de las fotos es»*. Sigue armando el resto de la demo.
+2. **Recorta.** Mira la imagen y da una caja aproximada `(izquierda, arriba, derecha, abajo)` que deje **fuera** la calle, la pared, el marco del letrero y todo lo que no sea el logo. El código lo ajusta justo al borde del logo.
+3. **Limpia con código** (`logo_limpio`, abajo): quita el fondo **solo si es liso** (pared lisa, fondo de color, blanco): queda transparente. Si el fondo no es liso (calle, ladrillo, una foto), no insistas: se deja el recorte tal cual. Luego le sube un poco el brillo (solo si está oscuro) y la nitidez, lo reduce a **máximo 300 px** y lo comprime a **WebP de máximo 30 KB**.
+4. **No rediseñes nada.** Solo recortar, quitar fondo liso, brillo y nitidez suaves y tamaño. **Nunca** redibujes, «completes», repintes ni cambies colores, letras o forma del logo.
+5. **Si la foto es muy mala** (muy pequeña, de menos de 90 px, o borrosa: `logo_limpio` devuelve `None`): **no pongas el logo**, deja `"logo": ""` (la carta dibuja un monograma con las iniciales, que se ve bien) y dile a Julián, en «Faltó»: *«logo: la foto era muy mala (borrosa o chiquita), dejé las iniciales; mándame una mejor»*.
+6. **Si salió bien:** ponlo en `"logo"` como `"data:image/webp;base64,…"`, **toma los colores de la carta a partir de él** (sección «Colores») y deja también el archivo `logo.webp` para descargar (lo usa «Dame los datos»).
+7. Si no puedes acceder al archivo de la imagen (solo la ves en la conversación) no puedes recortarla ni limpiarla: deja `"logo": ""`, escoge los colores por el estilo o mirando el logo, y dile a Julián que suba la imagen como archivo. **No intentes copiar la imagen «a mano».**
+
+Estas funciones (y `mejorar_suave` y `borrosa`, que también usan las fotos de platos) se definen **una sola vez**, al principio del código que arma la demo:
+
+```python
+from PIL import Image, ImageEnhance, ImageFilter, ImageStat, ImageDraw, ImageChops
+import io, base64, colorsys
+
+def mejorar_suave(im):
+    """im en RGB. Sube el brillo SOLO si la imagen es oscura (máximo 12 %), contraste +4 % y nitidez suave. No cambia colores ni diseño."""
+    lum = ImageStat.Stat(im.convert("L")).mean[0]
+    im = ImageEnhance.Brightness(im).enhance(min(1.12, max(1.0, 125 / max(lum, 1))))
+    im = ImageEnhance.Contrast(im).enhance(1.04)
+    return im.filter(ImageFilter.UnsharpMask(radius=1.2, percent=50, threshold=3))
+
+def borrosa(im):
+    """True si la imagen está borrosa: se compara qué tanto cambian los bordes al desenfocarla (nítida: ~0,7 · borrosa: casi 1)."""
+    g = im.convert("L"); g = g.resize((400, max(1, round(g.height * 400 / g.width)))) if g.width > 400 else g
+    borde = lambda x: ImageStat.Stat(x.filter(ImageFilter.FIND_EDGES)).var[0] ** 0.5
+    return borde(g.filter(ImageFilter.GaussianBlur(2))) / max(borde(g), 1e-6) > 0.9
+
+def quitar_fondo(im, tol=38):
+    """Devuelve la imagen en RGBA con el fondo liso transparente, o None si el fondo no es liso (calle, pared con textura, foto)."""
+    w, h = im.size
+    esquinas = [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]
+    ref = im.getpixel(esquinas[0])
+    if any(max(abs(a - b) for a, b in zip(im.getpixel(p), ref)) > tol for p in esquinas): return None
+    MARCA = (1, 254, 3)
+    c = im.copy()
+    for p in esquinas:
+        if c.getpixel(p) != MARCA: ImageDraw.floodfill(c, p, MARCA, thresh=tol)
+    fondo = ImageChops.difference(c, Image.new("RGB", c.size, MARCA)).convert("L").point(lambda v: 255 if v == 0 else 0)
+    parte = ImageStat.Stat(fondo).mean[0] / 255
+    if not 0.08 < parte < 0.85: return None                      # no se quitó casi nada, o se comió el logo
+    alfa = ImageChops.invert(fondo).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.7))
+    out = im.convert("RGBA"); out.putalpha(alfa)
+    return out
+
+def logo_limpio(ruta, caja=None, ancho_max=300, max_kb=30):
+    """Devuelve (bytes_webp, rgba) o None si la foto es muy mala. caja = recorte aproximado (izq, arriba, der, abajo) que dejó fuera calle y pared."""
+    im = Image.open(ruta).convert("RGB")
+    if caja: im = im.crop(caja)
+    if min(im.size) < 90 or borrosa(im): return None        # muy pequeña o borrosa: mejor las iniciales
+    rgba = quitar_fondo(im) or im.convert("RGBA")                 # si no se puede quitar el fondo, queda el recorte tal cual
+    caja2 = rgba.getchannel("A").point(lambda v: 255 if v > 24 else 0).getbbox()
+    if caja2:                                                     # recortar al logo con un margen de 4 %
+        m = round(0.04 * max(caja2[2] - caja2[0], caja2[3] - caja2[1]))
+        rgba = rgba.crop((max(0, caja2[0] - m), max(0, caja2[1] - m), min(rgba.width, caja2[2] + m), min(rgba.height, caja2[3] + m)))
+    k = min(1, ancho_max / max(rgba.size))
+    if k < 1: rgba = rgba.resize((max(1, round(rgba.width * k)), max(1, round(rgba.height * k))), Image.LANCZOS)
+    rgb = mejorar_suave(rgba.convert("RGB")); rgb.putalpha(rgba.getchannel("A")); rgba = rgb
+    for q in range(80, 29, -5):
+        b = io.BytesIO(); rgba.save(b, "WEBP", quality=q, method=6)
+        if b.tell() <= max_kb * 1024: break
+    return b.getvalue(), rgba
+
+def colores_del_logo(rgba):
+    """Los 5 colores de la carta a partir del logo, o None si el logo no tiene color (blanco, negro, gris)."""
+    p = rgba.copy(); p.thumbnail((64, 64)); cubos = {}
+    for r, g, b, a in p.getdata():
+        if a < 128: continue
+        h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        if s < 0.25 or v < 0.12 or v > 0.95: continue
+        c = cubos.setdefault(int(h * 24) % 24, [0, 0, 0]); w = s * v + 0.05
+        c[0] += w; c[1] += s * w; c[2] += h * w
+    if not cubos: return None
+    orden = sorted(cubos.items(), key=lambda kv: -kv[1][0])
+    (_, (w1, s1, h1)) = orden[0]; h1, s1 = h1 / w1, s1 / w1
+    seg = next(((k, v) for k, v in orden[1:] if min(abs(k - orden[0][0]), 24 - abs(k - orden[0][0])) >= 3 and v[0] >= 0.2 * w1), None)
+    h2, s2 = (seg[1][2] / seg[1][0], seg[1][1] / seg[1][0]) if seg else ((h1 + 0.08) % 1, s1)
+    hx = lambda h, s, l: "#%02x%02x%02x" % tuple(round(x * 255) for x in colorsys.hls_to_rgb(h, l, s))
+    return {"fondo": hx(h1, 0.35, 0.90), "tarjeta": hx(h1, 0.40, 0.98), "texto": hx(h1, 0.25, 0.10),
+            "principal": hx(h1, min(0.7, max(0.35, s1)), 0.34), "acento": hx(h2, min(0.75, max(0.45, s2)), 0.38)}
+
+# uso:
+#   r = logo_limpio("/mnt/user-data/uploads/logo.jpg", caja=(120, 60, 880, 640))
+#   if r is None: logo = ""                                   # muy mala: iniciales + avisar
+#   else:
+#       datos_webp, rgba = r
+#       logo = "data:image/webp;base64," + base64.b64encode(datos_webp).decode()
+#       open("/mnt/user-data/outputs/logo.webp", "wb").write(datos_webp)
+#       colores = colores_del_logo(rgba)                       # los 5 colores (o None si el logo no tiene color)
+```
 
 ### Fotos de los platos
 
@@ -96,21 +185,28 @@ Julián a veces manda, junto con la carta, fotos de platos sacadas de Google Map
 - **Cuántas:** máximo **8**. Primero los platos de «Lo más pedido» (los `destacado`), después los demás. El resto de platos queda sin foto.
 - **Cuáles escoger (las MEJORES):** bien iluminadas, con la comida de cerca y a la vista, nítidas, sin gente, sin calle ni fondo desordenado, sin textos ni logos encima, sin capturas de pantalla con marcos. Descarta las oscuras, movidas, lejanas, de grupos o de ambientes.
 - **A qué plato va:** solo si estás **seguro** de qué plato es (por la descripción de la foto, el pie de foto o lo que dijo Julián). **Si no estás seguro, NO la pongas** y apúntala en REVISAR: *«foto <número o descripción>: no sé a qué plato es»*. Una foto en el plato equivocado es peor que ninguna. Nunca pongas la misma foto en dos platos.
-- **Recortar y comprimir con código** (Pillow, ver abajo): recorta la foto **al plato** (caja ajustada a la comida, formato 4:3 horizontal), redúcela a **máximo 640 px de ancho** y guárdala como **WebP** pequeño (calidad 70, y si pesa más de **60 KB** baja la calidad de a 5 hasta que quepa). Ponla en el plato como `"foto": "data:image/webp;base64,…"`.
+- **Recortar, mejorar un poquito y comprimir con código** (`foto_webp`, abajo): recorta la foto **al plato** (caja ajustada a la comida, formato 4:3 horizontal), redúcela a **máximo 640 px de ancho**, aplícale la **mejora suave** (`mejorar_suave`: sube el brillo solo si está oscura —máximo 12 %—, un toque de contraste y de nitidez; **no cambia los colores ni el plato**) y guárdala como **WebP** pequeño (calidad 70, y si pesa más de **60 KB** baja la calidad de a 5 hasta que quepa). Si `foto_webp` devuelve `None` (la foto es borrosa o muy pequeña), **no la pongas** y apúntala en REVISAR. Ponla en el plato como `"foto": "data:image/webp;base64,…"`.
 - **Peso de la demo final: máximo 1,5 MB** (1.500.000 bytes). El código de abajo lo comprueba y, si se pasa, **quita fotos** (las últimas que pusiste) hasta que quepa; las que quites, anótalas en «Faltó».
 - Si no hay acceso a los archivos de las fotos (solo las ves en la conversación) no puedes recortarlas ni comprimirlas: no pongas ninguna y dile a Julián que las suba como archivos.
 
 ```python
+# (necesita mejorar_suave y borrosa, definidas en la sección «Logo»)
 from PIL import Image
 import io, base64
 
 def foto_webp(ruta, caja, ancho_max=640, max_kb=60):
-    """caja = (izquierda, arriba, derecha, abajo) en píxeles de la foto ORIGINAL: el recorte ajustado al plato (4:3)."""
-    im = Image.open(ruta); im = im.convert("RGB").crop(caja)
+    """caja = (izquierda, arriba, derecha, abajo) en píxeles de la foto ORIGINAL: el recorte ajustado al plato (4:3).
+    Devuelve el texto data:image/webp;base64,… o None si la foto es borrosa o muy pequeña."""
+    im = Image.open(ruta).convert("RGB").crop(caja)
+    if min(im.size) < 200 or borrosa(im): return None
     if im.width > ancho_max: im = im.resize((ancho_max, round(im.height * ancho_max / im.width)), Image.LANCZOS)
-    for q in range(70, 24, -5):
-        b = io.BytesIO(); im.save(b, "WEBP", quality=q, method=6)
-        if b.tell() <= max_kb * 1024: break
+    im = mejorar_suave(im)
+    while True:
+        for q in range(70, 24, -5):
+            b = io.BytesIO(); im.save(b, "WEBP", quality=q, method=6)
+            if b.tell() <= max_kb * 1024: break
+        if b.tell() <= max_kb * 1024 or im.width < 320: break
+        im = im.resize((round(im.width * 0.85), round(im.height * 0.85)), Image.LANCZOS)   # si aun así pesa, se achica un poco más
     return "data:image/webp;base64," + base64.b64encode(b.getvalue()).decode()
 
 # ejemplo:  plato["foto"] = foto_webp("/mnt/user-data/uploads/foto3.jpg", (120, 80, 920, 680))
@@ -193,7 +289,7 @@ Cuando Julián escriba **«dame los datos»** (o parecido: «pásame los datos»
 
 - **Es el mismo bloque** que está dentro de `demo-<nombre>.html`: desde `<!-- BLOQUE-DE-DATOS-INICIO` hasta `<!-- BLOQUE-DE-DATOS-FIN -->`, ambas marcas incluidas, en **un solo cuadro de código**. Con el JSON **completo** y con la **última versión** (si cambiaron un precio, el WhatsApp, el color o el vestido en el chat, va ya corregido). Debe incluir `edicionInicial` (el vestido elegido) e `intensidad`.
 - **Sin texto antes ni después.** No expliques, no resumas, no repitas el menú, no lo armes de nuevo como archivo. Lo único permitido, si hay algo marcado con `"revisar"`: una línea debajo del cuadro que diga *«Ojo: faltan por confirmar: <platos>. Con eso marcado no se puede pasar a la carta real»*.
-- **El logo no va dentro del bloque** (pesa decenas de miles de letras y se dañaría al copiar): en esta entrega pon `"logo": ""`. Si el logo existe como archivo en este entorno, déjalo para descargar como `logo.webp` y agrega, debajo del cuadro, esta línea: *«Guarda el logo como logo.webp en G:\Mi unidad\Demos\<nombre>\»*. Si Julián solo lo mandó como imagen por el chat, no digas nada del logo.
+- **El logo no va dentro del bloque** (pesa decenas de miles de letras y se dañaría al copiar): en esta entrega pon `"logo": ""`. Si procesaste un logo, déjalo (ya limpio, el mismo de la demo) para descargar como `logo.webp` y agrega, debajo del cuadro, esta línea: *«Guarda el logo como logo.webp en G:\Mi unidad\Demos\<nombre>\»*. Si no hubo logo (o salió muy mala la foto), no digas nada del logo.
 - **Las fotos de los platos tampoco van dentro del bloque** (son decenas de miles de letras): en «dame los datos» **quita el campo `"foto"` de todos los platos**. Si tienes las fotos como archivos, déjalas para descargar con el **nombre del plato en minúsculas, sin tildes y con guiones** (`bandeja-paisa.webp`) y agrega, debajo del cuadro, esta línea: *«Guarda las fotos en G:\Mi unidad\Demos\<nombre>otos\»*.
 - Es el **mismo formato** que usa el computador de Julián para armar la carta real: no lo cambies, no le agregues campos, no le quites ninguno.
 
@@ -212,7 +308,7 @@ REVISAR (míralo en la foto de la carta):
 - <plato>: <qué duda: precio no se lee / nombre borroso…>
 - foto <número o descripción>: no sé a qué plato es
 
-Faltó: <logo (monograma provisional) · WhatsApp · ciudad/slogan/instagram sin dato · platos sin foto · fotos que quité por el peso · …>
+Faltó: <logo (iniciales: no se vio cuál era / foto muy mala) · WhatsApp · ciudad/slogan/instagram sin dato · platos sin foto · fotos que quité por el peso · …>
 ```
 
 - Si no hay nada que revisar ni nada que faltó, solo: **«Lista: demo-<nombre>.html»**.
