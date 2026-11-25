@@ -293,6 +293,96 @@ Cuando Julián escriba **«dame los datos»** (o parecido: «pásame los datos»
 - **Las fotos de los platos tampoco van dentro del bloque** (son decenas de miles de letras): en «dame los datos» **quita el campo `"foto"` de todos los platos**. Si tienes las fotos como archivos, déjalas para descargar con el **nombre del plato en minúsculas, sin tildes y con guiones** (`bandeja-paisa.webp`) y agrega, debajo del cuadro, esta línea: *«Guarda las fotos en G:\Mi unidad\Demos\<nombre>otos\»*.
 - Es el **mismo formato** que usa el computador de Julián para armar la carta real: no lo cambies, no le agregues campos, no le quites ninguno.
 
+## «Dame la ficha» (la hoja completa del restaurante, para armar la carta real sin más preguntas)
+
+Cuando Julián escriba **«dame la ficha»** (o «llena la ficha»), le devuelves **SOLO la ficha del restaurante llena**, en **un solo cuadro de código** (con cuatro comillas invertidas por fuera, porque la ficha trae tablas), con los **últimos cambios** de la demo (precios, WhatsApp, colores, vestidos, platos). Nada más, salvo una línea debajo si algo quedó marcado «?» o sin dato: *«Ojo: faltan por confirmar: <lo que sea>»*.
+
+- **Usa exactamente este formato:** los mismos títulos, los mismos nombres de campo y las mismas columnas. Solo cambias lo que va después de los dos puntos y las filas de las tablas. Quita el recuadro de instrucciones del principio (las líneas que empiezan con «>»).
+- **Nunca inventes un precio:** si no se leyó, escribe `?` en la columna Precio.
+- **Colores:** los 5 de la demo, en formato `#rrggbb`. **Vestidos:** los que escogió Julián (`navidad:suave, noche`…); todos los vestidos vienen de fábrica en la carta real, aquí solo se dice cuáles quiere encendidos por sus fechas.
+- **Logo y portada:** en «Logo» y «Foto de portada» pon `ninguno` si no hay archivo (el computador de Julián hace uno provisional); si Julián los guardó en `G:\Mi unidad\Demos\<nombre>\`, pon esa ruta.
+- **Supabase:** déjalo vacío si no lo tiene. **Nunca** escribas una llave secreta (`service_role`, `secret`, ni la de OpenRouter).
+- Las categorías van en el orden de la demo y su nombre debe ser **idéntico** al que usan los platos.
+
+Esta es la ficha en blanco (llénala tal cual):
+
+````markdown
+# FICHA DEL RESTAURANTE
+
+> **Para qué sirve:** es TODO lo que cambia de un restaurante a otro. Julián la trae llena desde la demo en Claude y Claude Code arma la carta
+> real con ella, sin hacerle más preguntas: `node scripts/restaurante-desde-ficha.mjs <ruta-de-esta-ficha>`.
+>
+> **Cómo llenarla (para Julián o para el Claude de la demo):**
+> - Cambie solo lo que va después de los dos puntos y las filas de las tablas. **No cambie los títulos de los campos ni de las columnas.**
+> - Lo que no se sabe se deja en blanco (o con «—»). Los únicos obligatorios son los marcados con **(obligatorio)**.
+> - **Nunca invente un precio.** Si no se lee o no se sabe, escriba `?` en la columna Precio y Claude Code le preguntará a Julián.
+> - Los colores van en formato `#rrggbb`.
+> - **Nunca ponga claves secretas** (`service_role`, `secret`, la de OpenRouter). Solo la llave pública «anon/publishable», y solo si ya existe.
+
+## 1. Datos básicos
+- Nombre del restaurante (obligatorio):
+- Municipio o ciudad:
+- Eslogan:
+- Instagram (ej. @lafogata):
+- Nombre del sitio de Netlify (obligatorio, ej. lafogata-ibague; `https://<nombre>.netlify.app` debe decir «Site not found»):
+- WhatsApp para pedidos (10 dígitos, ej. 3001234567; el 57 se agrega solo):
+- Costo del domicilio en pesos (0 = gratis):
+
+## 2. Colores y logo
+Los 5 colores salen del logo o del estilo aprobado en la demo.
+- Color de fondo (ej. #f5ecdc):
+- Color de las tarjetas (ej. #fffdf8):
+- Color principal (el de la marca, ej. #3f5a24):
+- Color de acento (ej. #c8892b):
+- Color del texto (ej. #1f1a14):
+- Logo (ruta del archivo en el computador, ej. G:\Mi unidad\Demos\lafogata\logo.png; o «ninguno» y se hace uno provisional con las iniciales):
+- Foto de portada (ruta del archivo, o «ninguno» y se hace un fondo de color provisional):
+
+## 3. Vestidos de temporada
+Todos los vestidos (Almuerzos, Noche, Halloween, Amor y Amistad, Navidad, Día de la Madre y San Pedro) vienen de fábrica en toda carta nueva, con sus dibujos,
+animaciones, títulos y frases. Aquí solo se dice cuáles quiere **encendidos por sus fechas** el dueño y con qué intensidad (suave, media o fuerte).
+Nombres: `almuerzos`, `noche`, `halloween`, `amor`, `navidad`, `madre`, `sanpedro`. La Noche siempre es fuerte.
+- Vestidos que quiere (ej. navidad:suave, halloween:media, noche; vacío = todos apagados):
+- Encendido desde ya, sin esperar su fecha (uno solo, o vacío):
+
+## 4. Mesas
+- Cantidad de mesas (por defecto 10):
+
+## 5. Personal (para dejar `roles.sql` ya lleno)
+Los meseros se pueden agregar después desde el panel del dueño. Una línea por persona: `correo | Nombre`.
+- Dueño: correo | Nombre
+- Mesero: correo | Nombre
+- Mesero: correo | Nombre
+
+## 6. Supabase del restaurante (opcional: si todavía no existe, se deja vacío y se completa después)
+- URL del proyecto (https://xxxx.supabase.co):
+- Llave pública anon/publishable (nunca la secret):
+
+## 7. Categorías, en el orden en que salen en la carta
+El nombre debe ser **idéntico** al de la columna «Categoría» de la tabla de platos. Emoji y frase son opcionales.
+
+| Categoría | Emoji | Frase corta |
+|---|---|---|
+| Entradas | 🌮 | Para empezar y compartir |
+| Platos fuertes | 🥩 | |
+
+## 8. Platos
+Una fila por plato. Si el plato tiene varios tamaños o presentaciones, deje **Precio** vacío y escriba las **Opciones** como `Nombre=precio; Nombre=precio`
+(ej. `Vaso=6000; Jarra=22000`). Precio sin puntos ni signos (12500, no $12.500).
+Picante: 0 a 3. Etiquetas posibles: `res, pollo, cerdo, mar, veg, queso, comp, vegano, singluten` (separadas por coma).
+«Lo más pedido»: `sí` en 4 a 6 platos (salen primero en la carta).
+
+| Categoría | Plato | Descripción | Precio | Opciones | Picante | Etiquetas | Lo más pedido |
+|---|---|---|---|---|---|---|---|
+| Entradas | Plato de ejemplo 1 | Descripción corta y apetitosa | 12500 | | 0 | comp | sí |
+| Platos fuertes | Plato de ejemplo 2 | Descripción corta y apetitosa | 28000 | | 0 | res | |
+| Platos fuertes | Plato de ejemplo 3 | Con varios tamaños | | Personal=18000; Familiar=34000 | 0 | | |
+
+## 9. Notas para Claude Code (opcional)
+Cualquier cosa que no cabe arriba (ej. «el restaurante ya tiene Supabase», «el logo viene de Instagram»):
+-
+````
+
 ## Qué hace la demo (para que no la «arregles»)
 
 Es la **carta real COMPLETA** (el mismo código de la plantilla, tal cual), en un solo archivo. Tiene todas las pantallas, y debe seguir así:
